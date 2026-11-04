@@ -28,6 +28,7 @@ import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.ImageSearch
 import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.Shield
+import androidx.compose.material.icons.filled.SmartToy
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -71,6 +72,7 @@ fun HomeDashboardScreen(
     onNavigateToScan: (MediaType) -> Unit,
     onNavigateToReport: (ScanReport) -> Unit,
     onNavigateToHistory: () -> Unit,
+    onNavigateToAssistant: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val uiState by homeViewModel.uiState.collectAsStateWithLifecycle()
@@ -83,6 +85,7 @@ fun HomeDashboardScreen(
         onNavigateToScan = onNavigateToScan,
         onNavigateToReport = onNavigateToReport,
         onNavigateToHistory = onNavigateToHistory,
+        onNavigateToAssistant = onNavigateToAssistant,
         modifier = modifier
     )
 }
@@ -95,6 +98,7 @@ fun HomeDashboardScreenContent(
     onNavigateToScan: (MediaType) -> Unit,
     onNavigateToReport: (ScanReport) -> Unit,
     onNavigateToHistory: () -> Unit,
+    onNavigateToAssistant: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     LazyColumn(
@@ -187,6 +191,73 @@ fun HomeDashboardScreenContent(
                     onClick = { onNavigateToScan(MediaType.AUDIO) },
                     modifier = Modifier.weight(1f)
                 )
+            }
+        }
+
+        // Lumina AI Assistant Card Banner
+        item {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(20.dp))
+                    .clickable { onNavigateToAssistant() },
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = NavyBlue
+                )
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(20.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Surface(
+                                shape = RoundedCornerShape(6.dp),
+                                color = GovernmentBlue
+                            ) {
+                                Text(
+                                    text = "AI FORENSIC EXPERT",
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                    color = Color.White
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "Meet Lumina AI Assistant",
+                            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                            color = Color.White
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "Ask questions about deepfake scans, risk levels, PDF reports, and CyberVerify security.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color.White.copy(alpha = 0.8f)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.width(12.dp))
+
+                    Surface(
+                        shape = CircleShape,
+                        color = Color.White.copy(alpha = 0.15f),
+                        modifier = Modifier.size(48.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                imageVector = Icons.Default.SmartToy,
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(26.dp)
+                            )
+                        }
+                    }
+                }
             }
         }
 
@@ -517,7 +588,8 @@ private fun HomeDashboardScreenPreview() {
             userEmail = "alex.morgan@example.com",
             onNavigateToScan = {},
             onNavigateToReport = {},
-            onNavigateToHistory = {}
+            onNavigateToHistory = {},
+            onNavigateToAssistant = {}
         )
     }
 }

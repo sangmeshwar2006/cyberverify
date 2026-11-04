@@ -12,6 +12,7 @@ import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Security
+import androidx.compose.material.icons.filled.SmartToy
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -34,12 +35,14 @@ import com.cyberverify.domain.model.ScanReport
 import com.cyberverify.presentation.viewmodel.AuthViewModel
 import com.cyberverify.presentation.viewmodel.HistoryViewModel
 import com.cyberverify.presentation.viewmodel.HomeViewModel
+import com.cyberverify.presentation.viewmodel.LuminaChatbotViewModel
 import com.cyberverify.presentation.viewmodel.ScanAnalysisState
 import com.cyberverify.presentation.viewmodel.ScanViewModel
 import com.cyberverify.ui.screen.DetailedReportScreen
 import com.cyberverify.ui.screen.HistoryScreen
 import com.cyberverify.ui.screen.HomeDashboardScreen
 import com.cyberverify.ui.screen.LoginScreen
+import com.cyberverify.ui.screen.LuminaChatbotScreen
 import com.cyberverify.ui.screen.OnboardingScreen
 import com.cyberverify.ui.screen.ProfileScreen
 import com.cyberverify.ui.screen.QuickSummaryScreen
@@ -66,6 +69,7 @@ enum class BottomTab(
 ) {
     HOME("Home", Icons.Default.Home),
     SCAN("Scan", Icons.Default.Security),
+    ASSISTANT("Assistant", Icons.Default.SmartToy),
     HISTORY("History", Icons.Default.History),
     PROFILE("Profile", Icons.Default.Person)
 }
@@ -80,6 +84,7 @@ fun MainAppNavigation(
 ) {
     var currentRootScreen by remember { mutableStateOf<RootScreen>(RootScreen.Splash) }
     var currentBottomTab by remember { mutableStateOf(BottomTab.HOME) }
+    val luminaChatbotViewModel = remember { LuminaChatbotViewModel() }
 
     val scanAnalysisState by scanViewModel.analysisState.collectAsStateWithLifecycle()
     val selectedFileName by scanViewModel.selectedFileName.collectAsStateWithLifecycle()
@@ -185,12 +190,19 @@ fun MainAppNavigation(
                                         },
                                         onNavigateToHistory = {
                                             currentBottomTab = BottomTab.HISTORY
+                                        },
+                                        onNavigateToAssistant = {
+                                            currentBottomTab = BottomTab.ASSISTANT
                                         }
                                     )
                                 }
 
                                 BottomTab.SCAN -> {
                                     ScanScreen(viewModel = scanViewModel)
+                                }
+
+                                BottomTab.ASSISTANT -> {
+                                    LuminaChatbotScreen(viewModel = luminaChatbotViewModel)
                                 }
 
                                 BottomTab.HISTORY -> {
