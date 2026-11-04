@@ -39,11 +39,7 @@
 - On-device PDF generation built directly with Android's `PdfDocument` and `Canvas` graphics rendering pipeline.
 - Export shareable forensic inspection certificates containing timestamped hashes, complete anomaly breakdowns, risk classification meters, and verification signatures.
 
-### 🤖 3. Digital Safety Assistant Chatbot
-- Contextual, interactive AI safety chat offering expert advice on deepfake detection, digital hygiene, phishing protection, and threat remediation.
-- Provides dynamic suggestions based on recent scan results and allows users to ask questions about synthetic media threat vectors.
-
-### 💾 4. Offline Room DB Persistence
+### 💾 3. Offline Room DB Persistence
 - Complete offline-first history tracking powered by **Room Database** and Kotlin Coroutines/Flows.
 - Instant search, filter by media category (Image, Audio, Video), risk severity indexing, and full report restoration without network dependency.
 
@@ -60,9 +56,9 @@
          │                        │                             │
          ▼                        ▼                             ▼
  [ Local History ]        [ Pick Image/Audio ]         [ AI Feature Extract ]
-         │                                                      │
-         ▼                                                      ▼
- [ Safety Chatbot ] ◄─────────────────────────────── [ Dual-Tier Report ]
+                                                                │
+                                                                ▼
+                                                       [ Dual-Tier Report ]
                                                          │        │
                                    ┌─────────────────────┘        └─────────────────────┐
                                    ▼                                                    ▼
@@ -140,11 +136,11 @@ com.cyberverify
 ├── domain
 │   └── model             # Core domain models (ScanReport, RiskLevel, MediaType, Anomaly)
 ├── presentation
-│   └── viewmodel         # ViewModels (ScanViewModel, HistoryViewModel, ChatbotViewModel, AuthViewModel)
+│   └── viewmodel         # ViewModels (ScanViewModel, HistoryViewModel, HomeViewModel, AuthViewModel)
 ├── ui
 │   ├── component         # Reusable M3 Composables (AudioPlayerCard, MediaPicker, ImagePreview)
 │   ├── navigation        # Compose Navigation routes & graph definition
-│   ├── screen            # App screens (Home, Scan, Processing, QuickSummary, DetailedReport, Chat, History)
+│   ├── screen            # App screens (Home, Scan, Processing, QuickSummary, DetailedReport, History, Profile)
 │   └── theme             # Material Design 3 Expressive theme, typography, & dynamic palette
 └── util                  # Utilities (PdfReportGenerator, FileMetadataExtractor, AudioPlaybackManager)
 ```
@@ -196,7 +192,7 @@ com.cyberverify
 
 ## 🧪 Verification & Testing
 
-CyberVerify includes a comprehensive test suite covering view models, risk assessment logic, file metadata parsing, and chat interactions:
+CyberVerify includes a comprehensive test suite covering view models, risk assessment logic, and file metadata parsing:
 
 ```bash
 # Run all unit tests
@@ -204,7 +200,6 @@ CyberVerify includes a comprehensive test suite covering view models, risk asses
 
 # Run specific ViewModel tests
 ./gradlew test --tests "com.cyberverify.ScanViewModelTest"
-./gradlew test --tests "com.cyberverify.ChatbotViewModelTest"
 ```
 
 ---

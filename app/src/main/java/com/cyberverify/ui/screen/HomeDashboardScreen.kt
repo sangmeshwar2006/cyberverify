@@ -28,7 +28,6 @@ import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.ImageSearch
 import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.Shield
-import androidx.compose.material.icons.filled.SmartToy
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -72,7 +71,6 @@ fun HomeDashboardScreen(
     onNavigateToScan: (MediaType) -> Unit,
     onNavigateToReport: (ScanReport) -> Unit,
     onNavigateToHistory: () -> Unit,
-    onNavigateToAssistant: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val uiState by homeViewModel.uiState.collectAsStateWithLifecycle()
@@ -85,7 +83,6 @@ fun HomeDashboardScreen(
         onNavigateToScan = onNavigateToScan,
         onNavigateToReport = onNavigateToReport,
         onNavigateToHistory = onNavigateToHistory,
-        onNavigateToAssistant = onNavigateToAssistant,
         modifier = modifier
     )
 }
@@ -98,7 +95,6 @@ fun HomeDashboardScreenContent(
     onNavigateToScan: (MediaType) -> Unit,
     onNavigateToReport: (ScanReport) -> Unit,
     onNavigateToHistory: () -> Unit,
-    onNavigateToAssistant: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     LazyColumn(
@@ -191,60 +187,6 @@ fun HomeDashboardScreenContent(
                     onClick = { onNavigateToScan(MediaType.AUDIO) },
                     modifier = Modifier.weight(1f)
                 )
-            }
-        }
-
-        // Digital Safety Assistant Quick Access Card
-        item {
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(20.dp))
-                    .clickable { onNavigateToAssistant() },
-                shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(containerColor = NavyBlue)
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Surface(
-                        shape = CircleShape,
-                        color = Color.White.copy(alpha = 0.2f),
-                        modifier = Modifier.size(48.dp)
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                imageVector = Icons.Default.SmartToy,
-                                contentDescription = null,
-                                tint = Color.White,
-                                modifier = Modifier.size(26.dp)
-                            )
-                        }
-                    }
-                    Spacer(modifier = Modifier.width(16.dp))
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = "Digital Safety & Forensic Assistant",
-                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                            color = Color.White
-                        )
-                        Spacer(modifier = Modifier.height(2.dp))
-                        Text(
-                            text = "Ask about deepfakes, risk levels, and privacy",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = Color.White.copy(alpha = 0.8f)
-                        )
-                    }
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                        contentDescription = null,
-                        tint = Color.White,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
             }
         }
 
@@ -575,8 +517,7 @@ private fun HomeDashboardScreenPreview() {
             userEmail = "alex.morgan@example.com",
             onNavigateToScan = {},
             onNavigateToReport = {},
-            onNavigateToHistory = {},
-            onNavigateToAssistant = {}
+            onNavigateToHistory = {}
         )
     }
 }

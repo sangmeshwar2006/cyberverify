@@ -12,7 +12,6 @@ import androidx.lifecycle.ViewModelProvider
 import com.cyberverify.data.local.AppDatabase
 import com.cyberverify.data.repository.ScanRepository
 import com.cyberverify.presentation.viewmodel.AuthViewModel
-import com.cyberverify.presentation.viewmodel.ChatbotViewModel
 import com.cyberverify.presentation.viewmodel.HistoryViewModel
 import com.cyberverify.presentation.viewmodel.HomeViewModel
 import com.cyberverify.presentation.viewmodel.ScanViewModel
@@ -53,8 +52,6 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private val chatbotViewModel by viewModels<ChatbotViewModel>()
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -70,8 +67,7 @@ class MainActivity : ComponentActivity() {
                     authViewModel = authViewModel,
                     homeViewModel = homeViewModel,
                     scanViewModel = scanViewModel,
-                    historyViewModel = historyViewModel,
-                    chatbotViewModel = chatbotViewModel
+                    historyViewModel = historyViewModel
                 )
             }
         }

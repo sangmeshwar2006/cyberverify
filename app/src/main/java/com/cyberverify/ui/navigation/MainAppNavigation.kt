@@ -12,7 +12,6 @@ import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Security
-import androidx.compose.material.icons.filled.SmartToy
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -33,12 +32,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.cyberverify.domain.model.MediaType
 import com.cyberverify.domain.model.ScanReport
 import com.cyberverify.presentation.viewmodel.AuthViewModel
-import com.cyberverify.presentation.viewmodel.ChatbotViewModel
 import com.cyberverify.presentation.viewmodel.HistoryViewModel
 import com.cyberverify.presentation.viewmodel.HomeViewModel
 import com.cyberverify.presentation.viewmodel.ScanAnalysisState
 import com.cyberverify.presentation.viewmodel.ScanViewModel
-import com.cyberverify.ui.screen.ChatbotScreen
 import com.cyberverify.ui.screen.DetailedReportScreen
 import com.cyberverify.ui.screen.HistoryScreen
 import com.cyberverify.ui.screen.HomeDashboardScreen
@@ -69,7 +66,6 @@ enum class BottomTab(
 ) {
     HOME("Home", Icons.Default.Home),
     SCAN("Scan", Icons.Default.Security),
-    ASSISTANT("Assistant", Icons.Default.SmartToy),
     HISTORY("History", Icons.Default.History),
     PROFILE("Profile", Icons.Default.Person)
 }
@@ -80,7 +76,6 @@ fun MainAppNavigation(
     homeViewModel: HomeViewModel,
     scanViewModel: ScanViewModel,
     historyViewModel: HistoryViewModel,
-    chatbotViewModel: ChatbotViewModel,
     modifier: Modifier = Modifier
 ) {
     var currentRootScreen by remember { mutableStateOf<RootScreen>(RootScreen.Splash) }
@@ -190,19 +185,12 @@ fun MainAppNavigation(
                                         },
                                         onNavigateToHistory = {
                                             currentBottomTab = BottomTab.HISTORY
-                                        },
-                                        onNavigateToAssistant = {
-                                            currentBottomTab = BottomTab.ASSISTANT
                                         }
                                     )
                                 }
 
                                 BottomTab.SCAN -> {
                                     ScanScreen(viewModel = scanViewModel)
-                                }
-
-                                BottomTab.ASSISTANT -> {
-                                    ChatbotScreen(viewModel = chatbotViewModel)
                                 }
 
                                 BottomTab.HISTORY -> {
