@@ -1,19 +1,35 @@
 package com.cyberverify
 
+import com.cyberverify.data.repository.GeminiRepository
 import com.cyberverify.domain.model.ChatSender
 import com.cyberverify.presentation.viewmodel.ChatbotViewModel
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.setMain
+import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class ChatbotViewModelTest {
 
+    private val testDispatcher = UnconfinedTestDispatcher()
     private lateinit var viewModel: ChatbotViewModel
 
     @Before
     fun setUp() {
-        viewModel = ChatbotViewModel()
+        Dispatchers.setMain(testDispatcher)
+        viewModel = ChatbotViewModel(FakeOfflineGeminiRepository())
+    }
+
+    @After
+    fun tearDown() {
+        Dispatchers.resetMain()
     }
 
     @Test
@@ -21,6 +37,7 @@ class ChatbotViewModelTest {
         val messages = viewModel.messages.value
         assertTrue(messages.isNotEmpty())
         assertEquals(ChatSender.BOT, messages.first().sender)
+        assertFalse(viewModel.isLiveMode.value)
     }
 
     @Test
@@ -67,62 +84,66 @@ class ChatbotViewModelTest {
     }
 
     @Test
-    fun `sendMessage with exif metadata query returns metadata explanation`() {
-        viewModel.sendMessage("Explain EXIF metadata and GPS tags")
-        val messages = viewModel.messages.value
+    fun `sendMessage with live gemini repository returns live response`() {
+        val liveRepo = FakeLiveGeminiRepository("Live Gemini Response from Cloud")
+        val liveViewModel = ChatbotViewModel(liveRepo)
+
+        assertTrue(liveViewModel.isLiveMode.value)
+        liveViewModel.sendMessage("Explain quantum cryptography")
+
+        val messages = liveViewModel.messages.value
         val lastMessage = messages.last()
 
         assertEquals(ChatSender.BOT, lastMessage.sender)
-        assertTrue(lastMessage.text.contains("Metadata & EXIF Data Forensics"))
+        assertEquals("Live Gemini Response from Cloud", lastMessage.text)
     }
 
     @Test
-    fun `sendMessage with image format query returns jpg png ela explanation`() {
-        viewModel.sendMessage("What is the difference between JPG and PNG and ELA?")
-        val messages = viewModel.messages.value
+    fun `sendMessage with live gemini repository returning null falls back smoothly`() {
+        val failingLiveRepo = FakeLiveGeminiRepository(responseToReturn = null)
+        val liveViewModel = ChatbotViewModel(failingLiveRepo)
+
+        assertTrue(liveViewModel.isLiveMode.value)
+        liveViewModel.sendMessage("What does Red risk mean?")
+
+        val messages = liveViewModel.messages.value
         val lastMessage = messages.last()
 
         assertEquals(ChatSender.BOT, lastMessage.sender)
-        assertTrue(lastMessage.text.contains("Image Formats & Compression Forensics"))
+        assertTrue(lastMessage.text.contains("High Risk"))
     }
 
     @Test
-    fun `sendMessage with arbitrary question returns intelligent fallback response`() {
-        viewModel.sendMessage("Tell me a random story about a blue bicycle")
-        val messages = viewModel.messages.value
-        val lastMessage = messages.last()
+    fun `setApiKey updates live mode state`() {
+        val repo = FakeMutableGeminiRepository()
+        val mutableViewModel = ChatbotViewModel(repo)
 
-        assertEquals(ChatSender.BOT, lastMessage.sender)
-        assertTrue(lastMessage.text.contains("Gemini-Level Intelligence & Forensic Analysis"))
+        assertFalse(mutableViewModel.isLiveMode.value)
+
+        mutableViewModel.setApiKey("test_api_key_123")
+        assertTrue(mutableViewModel.isLiveMode.value)
     }
+}
 
-    @Test
-    fun `sendMessage with cybersecurity query returns cybersecurity response`() {
-        viewModel.sendMessage("Explain ransomware and phishing threats")
-        val messages = viewModel.messages.value
-        val lastMessage = messages.last()
+private class FakeOfflineGeminiRepository : GeminiRepository {
+    override fun isAvailable(): Boolean = false
+    override fun updateApiKey(apiKey: String) {}
+    override suspend fun generateResponse(prompt: String): String? = null
+}
 
-        assertEquals(ChatSender.BOT, lastMessage.sender)
-        assertTrue(lastMessage.text.contains("Cybersecurity & Threat Intelligence"))
+private class FakeLiveGeminiRepository(
+    private val responseToReturn: String?
+) : GeminiRepository {
+    override fun isAvailable(): Boolean = true
+    override fun updateApiKey(apiKey: String) {}
+    override suspend fun generateResponse(prompt: String): String? = responseToReturn
+}
+
+private class FakeMutableGeminiRepository : GeminiRepository {
+    private var key: String = ""
+    override fun isAvailable(): Boolean = key.isNotBlank()
+    override fun updateApiKey(apiKey: String) {
+        key = apiKey
     }
-
-    @Test
-    fun `sendMessage with programming query returns programming response`() {
-        viewModel.sendMessage("How do Jetpack Compose and coroutines work?")
-        val messages = viewModel.messages.value
-        val lastMessage = messages.last()
-
-        assertEquals(ChatSender.BOT, lastMessage.sender)
-        assertTrue(lastMessage.text.contains("Programming & Software Engineering"))
-    }
-
-    @Test
-    fun `sendMessage with general knowledge query returns scientific response`() {
-        viewModel.sendMessage("Tell me about artificial intelligence and transformers")
-        val messages = viewModel.messages.value
-        val lastMessage = messages.last()
-
-        assertEquals(ChatSender.BOT, lastMessage.sender)
-        assertTrue(lastMessage.text.contains("General Knowledge & Scientific Intelligence"))
-    }
+    override suspend fun generateResponse(prompt: String): String? = if (isAvailable()) "Response for $prompt" else null
 }

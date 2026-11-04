@@ -1,14 +1,20 @@
 package com.cyberverify.presentation.viewmodel
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.cyberverify.data.repository.GeminiRepository
+import com.cyberverify.data.repository.GeminiRepositoryImpl
 import com.cyberverify.domain.model.ChatMessage
 import com.cyberverify.domain.model.ChatSender
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 
-class ChatbotViewModel : ViewModel() {
+class ChatbotViewModel(
+    private val geminiRepository: GeminiRepository = GeminiRepositoryImpl()
+) : ViewModel() {
 
     private val _messages = MutableStateFlow<List<ChatMessage>>(
         listOf(
@@ -20,6 +26,12 @@ class ChatbotViewModel : ViewModel() {
     )
     val messages: StateFlow<List<ChatMessage>> = _messages.asStateFlow()
 
+    private val _isLoading = MutableStateFlow(false)
+    val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
+
+    private val _isLiveMode = MutableStateFlow(geminiRepository.isAvailable())
+    val isLiveMode: StateFlow<Boolean> = _isLiveMode.asStateFlow()
+
     val quickSuggestions = listOf(
         "How to scan images & audio?",
         "What do Green, Yellow, Red & Grey mean?",
@@ -30,18 +42,40 @@ class ChatbotViewModel : ViewModel() {
         "Programming & Jetpack Compose Tips"
     )
 
+    fun setApiKey(apiKey: String) {
+        geminiRepository.updateApiKey(apiKey)
+        _isLiveMode.value = geminiRepository.isAvailable()
+    }
+
     fun sendMessage(userText: String) {
         if (userText.isBlank()) return
 
         val userMessage = ChatMessage(text = userText.trim(), sender = ChatSender.USER)
         _messages.update { it + userMessage }
 
-        val botReplyText = generateBotResponse(userText)
-        val botMessage = ChatMessage(text = botReplyText, sender = ChatSender.BOT)
-        _messages.update { it + botMessage }
+        viewModelScope.launch {
+            _isLoading.value = true
+
+            var botReplyText: String? = null
+            if (geminiRepository.isAvailable()) {
+                try {
+                    botReplyText = geminiRepository.generateResponse(userText.trim())
+                } catch (e: Exception) {
+                    botReplyText = null
+                }
+            }
+
+            if (botReplyText.isNullOrBlank()) {
+                botReplyText = generateOfflineBotResponse(userText)
+            }
+
+            val botMessage = ChatMessage(text = botReplyText, sender = ChatSender.BOT)
+            _messages.update { it + botMessage }
+            _isLoading.value = false
+        }
     }
 
-    private fun generateBotResponse(query: String): String {
+    fun generateOfflineBotResponse(query: String): String {
         val q = query.lowercase()
         return when {
             q.contains("voice") || q.contains("audio") || q.contains("clone") || q.contains("speech") || q.contains("sound") || q.contains("codec") || q.contains("frequency") || q.contains("spectrogram") -> {
