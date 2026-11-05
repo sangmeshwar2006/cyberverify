@@ -2,12 +2,16 @@ package com.cyberverify.presentation.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.cyberverify.BuildConfig
+import com.google.ai.client.generativeai.GenerativeModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 data class ChatMessage(
     val id: String,
@@ -45,6 +49,22 @@ class LuminaChatbotViewModel : ViewModel() {
     private val _isTyping = MutableStateFlow(false)
     val isTyping: StateFlow<Boolean> = _isTyping.asStateFlow()
 
+    private val generativeModel: GenerativeModel? by lazy {
+        val apiKey = BuildConfig.GEMINI_API_KEY
+        if (apiKey.isNotBlank() && apiKey != "YOUR_API_KEY_HERE") {
+            try {
+                GenerativeModel(
+                    modelName = "gemini-1.5-flash",
+                    apiKey = apiKey
+                )
+            } catch (e: Exception) {
+                null
+            }
+        } else {
+            null
+        }
+    }
+
     fun sendMessage(prompt: String) {
         if (prompt.isBlank()) return
         val userMsg = ChatMessage(
@@ -56,8 +76,7 @@ class LuminaChatbotViewModel : ViewModel() {
         _isTyping.value = true
 
         viewModelScope.launch {
-            delay(700) // Simulate AI reasoning
-            val responseContent = generateLuminaResponse(prompt)
+            val responseContent = generateHybridResponse(prompt)
             val modelMsg = ChatMessage(
                 id = (System.currentTimeMillis() + 1).toString(),
                 role = Role.MODEL,
@@ -78,7 +97,38 @@ class LuminaChatbotViewModel : ViewModel() {
         )
     }
 
-    private fun generateLuminaResponse(query: String): String {
+    private suspend fun generateHybridResponse(query: String): String {
+        // 1. Instantaneous local keyword matching for precise CyberVerify queries
+        val localResponse = getLocalKeywordResponse(query)
+        if (localResponse != null) {
+            // Zero/minimal delay for instantaneous local responses
+            delay(150)
+            return localResponse
+        }
+
+        // 2. Live Gemini AI generation for any other user question when API key is available
+        val model = generativeModel
+        if (model != null) {
+            try {
+                val aiResponse = withContext(Dispatchers.IO) {
+                    val promptWithContext = "You are Lumina, the advanced AI Forensic Assistant for CyberVerify, an on-device media forensics app detecting deepfakes (image face swaps, voice clones) with 4 risk levels (GREEN, YELLOW, RED, GREY), quick summaries, detailed reports, PDF generation, and Room DB local storage. Answer the following user question clearly with markdown formatting:\n\n$query"
+                    val result = model.generateContent(promptWithContext)
+                    result.text
+                }
+                if (!aiResponse.isNullOrBlank()) {
+                    return aiResponse
+                }
+            } catch (e: Exception) {
+                // Fallback to local fallback response if network/API call fails
+            }
+        }
+
+        // 3. Fallback response
+        delay(300)
+        return getFallbackResponse(query)
+    }
+
+    private fun getLocalKeywordResponse(query: String): String? {
         val q = query.lowercase()
         return when {
             q.contains("image") || q.contains("photo") || q.contains("face") || q.contains("deepfake") -> {
@@ -140,9 +190,11 @@ class LuminaChatbotViewModel : ViewModel() {
                         "- **Data Integrity**: Cryptographic hashing and Room DB encryption safeguards.\n" +
                         "- **Compliance**: Designed for government, enterprise, and journalist verification standards."
             }
-            else -> {
-                "I have registered your inquiry regarding **\"$query\"**. As Lumina, your CyberVerify AI Forensic Assistant, I can guide you through our image and voice scan engines, explain the 4 risk levels (GREEN, YELLOW, RED, GREY), walk you through Quick Summaries and Detailed Reports, assist with PDF report generation, or explain our Room DB storage and security features.\n\nHow else can I help you?"
-            }
+            else -> null
         }
+    }
+
+    private fun getFallbackResponse(query: String): String {
+        return "I have analyzed your inquiry regarding **\"$query\"**. As Lumina, your CyberVerify AI Forensic Assistant, I am equipped to guide you through image and voice deepfake verification, risk assessments (GREEN, YELLOW, RED, GREY), quick summaries, detailed reports, PDF report generation, and Room DB local storage.\n\nHow else can I assist your investigation today?"
     }
 }
