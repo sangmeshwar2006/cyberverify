@@ -24,27 +24,45 @@ enum class Role {
     USER, MODEL
 }
 
-class LuminaChatbotViewModel : ViewModel() {
+data class ChatSession(
+    val id: String,
+    val title: String,
+    val messages: List<ChatMessage>,
+    val updatedAt: Long = System.currentTimeMillis()
+)
 
-    private val _messages = MutableStateFlow<List<ChatMessage>>(
+class LuminaAssistantViewModel : ViewModel() {
+
+    private val _sessions = MutableStateFlow<List<ChatSession>>(
         listOf(
-            ChatMessage(
+            ChatSession(
                 id = "1",
-                role = Role.MODEL,
-                content = "Hello! I am **Lumina**, your advanced AI Forensic Assistant for **CyberVerify**.\n\n" +
-                        "I am fully versed in all CyberVerify forensic capabilities, including:\n" +
-                        "- **Image Scan**: Deepfake & face swap detection\n" +
-                        "- **Voice Scan**: Audio synthetic clone & spectrogram analysis\n" +
-                        "- **4 Risk Levels**: 🟢 GREEN, 🟡 YELLOW, 🔴 RED, ⚪ GREY\n" +
-                        "- **Quick Summary & Detailed Reports**\n" +
-                        "- **PDF Report Generator**\n" +
-                        "- **Room DB Local Storage**\n" +
-                        "- **Enterprise Security Features**\n\n" +
-                        "How can I assist you with media verification today?"
+                title = "Welcome to Lumina AI",
+                messages = listOf(
+                    ChatMessage(
+                        id = "1",
+                        role = Role.MODEL,
+                        content = "Hello! I am **Lumina**, your advanced AI Forensic Assistant for **CyberVerify**.\n\n" +
+                                "I am fully versed in all CyberVerify forensic capabilities, including:\n" +
+                                "- **Image Scan**: Deepfake & face swap detection\n" +
+                                "- **Voice Scan**: Audio synthetic clone & spectrogram analysis\n" +
+                                "- **4 Risk Levels**: 🟢 GREEN, 🟡 YELLOW, 🔴 RED, ⚪ GREY\n" +
+                                "- **Quick Summary & Detailed Reports**\n" +
+                                "- **PDF Report Generator**\n" +
+                                "- **Room DB Local Storage**\n\n" +
+                                "How can I assist you with media verification today?"
+                    )
+                )
             )
         )
     )
-    val messages: StateFlow<List<ChatMessage>> = _messages.asStateFlow()
+    val sessions: StateFlow<List<ChatSession>> = _sessions.asStateFlow()
+
+    private val _activeSessionId = MutableStateFlow<String?>("1")
+    val activeSessionId: StateFlow<String?> = _activeSessionId.asStateFlow()
+
+    private val _isSidebarOpen = MutableStateFlow(true)
+    val isSidebarOpen: StateFlow<Boolean> = _isSidebarOpen.asStateFlow()
 
     private val _isTyping = MutableStateFlow(false)
     val isTyping: StateFlow<Boolean> = _isTyping.asStateFlow()
@@ -65,48 +83,129 @@ class LuminaChatbotViewModel : ViewModel() {
         }
     }
 
-    fun sendMessage(prompt: String) {
-        if (prompt.isBlank()) return
-        val userMsg = ChatMessage(
+    fun toggleSidebar() {
+        _isSidebarOpen.value = !_isSidebarOpen.value
+    }
+
+    fun createNewSession() {
+        val newSessionId = System.currentTimeMillis().toString()
+        val newSession = ChatSession(
+            id = newSessionId,
+            title = "New Chat",
+            messages = emptyList(),
+            updatedAt = System.currentTimeMillis()
+        )
+        _sessions.update { listOf(newSession) + it }
+        _activeSessionId.value = newSessionId
+    }
+
+    fun selectSession(sessionId: String) {
+        _activeSessionId.value = sessionId
+    }
+
+    fun deleteSession(sessionId: String) {
+        _sessions.update { currentList ->
+            val updated = currentList.filter { it.id != sessionId }
+            if (_activeSessionId.value == sessionId) {
+                _activeSessionId.value = updated.firstOrNull()?.id
+            }
+            updated
+        }
+    }
+
+    fun clearActiveChat() {
+        val currentId = _activeSessionId.value ?: return
+        _sessions.update { currentList ->
+            currentList.map { session ->
+                if (session.id == currentId) {
+                    session.copy(
+                        messages = listOf(
+                            ChatMessage(
+                                id = System.currentTimeMillis().toString(),
+                                role = Role.MODEL,
+                                content = "Chat session reset. I'm Lumina, your CyberVerify AI Forensic Assistant. What would you like to investigate?"
+                            )
+                        ),
+                        updatedAt = System.currentTimeMillis()
+                    )
+                } else session
+            }
+        }
+    }
+
+    fun sendMessage(content: String) {
+        if (content.isBlank()) return
+
+        var currentId = _activeSessionId.value
+        if (currentId == null || _sessions.value.none { it.id == currentId }) {
+            val newId = System.currentTimeMillis().toString()
+            val newSession = ChatSession(
+                id = newId,
+                title = if (content.length > 30) content.take(30) + "..." else content,
+                messages = emptyList(),
+                updatedAt = System.currentTimeMillis()
+            )
+            _sessions.update { listOf(newSession) + it }
+            _activeSessionId.value = newId
+            currentId = newId
+        }
+
+        val userMessage = ChatMessage(
             id = System.currentTimeMillis().toString(),
             role = Role.USER,
-            content = prompt
+            content = content
         )
-        _messages.update { it + userMsg }
+
+        // Update session with user message and update title if it was "New Chat" or first message
+        _sessions.update { currentList ->
+            currentList.map { session ->
+                if (session.id == currentId) {
+                    val isFirst = session.messages.isEmpty()
+                    val newTitle = if (isFirst || session.title == "New Chat" || session.title == "Welcome to Lumina AI") {
+                        if (content.length > 30) content.take(30) + "..." else content
+                    } else session.title
+                    session.copy(
+                        title = newTitle,
+                        messages = session.messages + userMessage,
+                        updatedAt = System.currentTimeMillis()
+                    )
+                } else session
+            }
+        }
+
         _isTyping.value = true
 
         viewModelScope.launch {
-            val responseContent = generateHybridResponse(prompt)
-            val modelMsg = ChatMessage(
+            val responseContent = generateHybridResponse(content)
+            val botMessage = ChatMessage(
                 id = (System.currentTimeMillis() + 1).toString(),
                 role = Role.MODEL,
                 content = responseContent
             )
-            _messages.update { it + modelMsg }
+
+            _sessions.update { currentList ->
+                currentList.map { session ->
+                    if (session.id == currentId) {
+                        session.copy(
+                            messages = session.messages + botMessage,
+                            updatedAt = System.currentTimeMillis()
+                        )
+                    } else session
+                }
+            }
             _isTyping.value = false
         }
     }
 
-    fun clearChat() {
-        _messages.value = listOf(
-            ChatMessage(
-                id = System.currentTimeMillis().toString(),
-                role = Role.MODEL,
-                content = "Chat session reset. I'm Lumina, your CyberVerify AI Forensic Assistant. What would you like to investigate?"
-            )
-        )
-    }
-
     private suspend fun generateHybridResponse(query: String): String {
-        // 1. Instantaneous local keyword matching for precise CyberVerify queries
+        // 1. Instantaneous local CyberVerify expert response
         val localResponse = getLocalKeywordResponse(query)
         if (localResponse != null) {
-            // Zero/minimal delay for instantaneous local responses
             delay(150)
             return localResponse
         }
 
-        // 2. Live Gemini AI generation for any other user question when API key is available
+        // 2. Live Gemini AI generation
         val model = generativeModel
         if (model != null) {
             try {
@@ -119,13 +218,13 @@ class LuminaChatbotViewModel : ViewModel() {
                     return aiResponse
                 }
             } catch (e: Exception) {
-                // Fallback to local fallback response if network/API call fails
+                // Fallback on error
             }
         }
 
         // 3. Fallback response
-        delay(300)
-        return getFallbackResponse(query)
+        delay(250)
+        return "I have analyzed your inquiry regarding **\"$query\"**. As Lumina, your CyberVerify AI Forensic Assistant, I am ready to help you investigate deepfakes, inspect image artifacts, analyze voice spectrograms, and review 4-tier risk assessments."
     }
 
     private fun getLocalKeywordResponse(query: String): String? {
@@ -192,9 +291,5 @@ class LuminaChatbotViewModel : ViewModel() {
             }
             else -> null
         }
-    }
-
-    private fun getFallbackResponse(query: String): String {
-        return "I have analyzed your inquiry regarding **\"$query\"**. As Lumina, your CyberVerify AI Forensic Assistant, I am equipped to guide you through image and voice deepfake verification, risk assessments (GREEN, YELLOW, RED, GREY), quick summaries, detailed reports, PDF report generation, and Room DB local storage.\n\nHow else can I assist your investigation today?"
     }
 }

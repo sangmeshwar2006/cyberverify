@@ -35,14 +35,14 @@ import com.cyberverify.domain.model.ScanReport
 import com.cyberverify.presentation.viewmodel.AuthViewModel
 import com.cyberverify.presentation.viewmodel.HistoryViewModel
 import com.cyberverify.presentation.viewmodel.HomeViewModel
-import com.cyberverify.presentation.viewmodel.LuminaChatbotViewModel
+import com.cyberverify.presentation.viewmodel.LuminaAssistantViewModel
 import com.cyberverify.presentation.viewmodel.ScanAnalysisState
 import com.cyberverify.presentation.viewmodel.ScanViewModel
 import com.cyberverify.ui.screen.DetailedReportScreen
 import com.cyberverify.ui.screen.HistoryScreen
 import com.cyberverify.ui.screen.HomeDashboardScreen
 import com.cyberverify.ui.screen.LoginScreen
-import com.cyberverify.ui.screen.LuminaChatbotScreen
+import com.cyberverify.ui.screen.LuminaAssistantScreen
 import com.cyberverify.ui.screen.OnboardingScreen
 import com.cyberverify.ui.screen.ProfileScreen
 import com.cyberverify.ui.screen.QuickSummaryScreen
@@ -84,7 +84,7 @@ fun MainAppNavigation(
 ) {
     var currentRootScreen by remember { mutableStateOf<RootScreen>(RootScreen.Splash) }
     var currentBottomTab by remember { mutableStateOf(BottomTab.HOME) }
-    val luminaChatbotViewModel = remember { LuminaChatbotViewModel() }
+    val luminaAssistantViewModel = remember { LuminaAssistantViewModel() }
 
     val scanAnalysisState by scanViewModel.analysisState.collectAsStateWithLifecycle()
     val selectedFileName by scanViewModel.selectedFileName.collectAsStateWithLifecycle()
@@ -202,7 +202,7 @@ fun MainAppNavigation(
                                 }
 
                                 BottomTab.ASSISTANT -> {
-                                    LuminaChatbotScreen(viewModel = luminaChatbotViewModel)
+                                    LuminaAssistantScreen(viewModel = luminaAssistantViewModel)
                                 }
 
                                 BottomTab.HISTORY -> {

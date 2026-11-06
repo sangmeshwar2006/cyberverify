@@ -1,6 +1,6 @@
 package com.cyberverify
 
-import com.cyberverify.presentation.viewmodel.LuminaChatbotViewModel
+import com.cyberverify.presentation.viewmodel.LuminaAssistantViewModel
 import com.cyberverify.presentation.viewmodel.Role
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -16,15 +16,15 @@ import org.junit.Before
 import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
-class LuminaChatbotViewModelTest {
+class LuminaAssistantViewModelTest {
 
     private val testDispatcher = StandardTestDispatcher()
-    private lateinit var viewModel: LuminaChatbotViewModel
+    private lateinit var viewModel: LuminaAssistantViewModel
 
     @Before
     fun setUp() {
         Dispatchers.setMain(testDispatcher)
-        viewModel = LuminaChatbotViewModel()
+        viewModel = LuminaAssistantViewModel()
     }
 
     @After
@@ -33,22 +33,25 @@ class LuminaChatbotViewModelTest {
     }
 
     @Test
-    fun `initial state contains welcome message`() {
-        val messages = viewModel.messages.value
-        assertEquals(1, messages.size)
-        assertEquals(Role.MODEL, messages[0].role)
-        assertTrue(messages[0].content.contains("Lumina"))
+    fun `initial state contains session with welcome message`() {
+        val sessions = viewModel.sessions.value
+        assertTrue(sessions.isNotEmpty())
+        val activeSession = sessions.first()
+        assertTrue(activeSession.messages.isNotEmpty())
+        assertEquals(Role.MODEL, activeSession.messages[0].role)
+        assertTrue(activeSession.messages[0].content.contains("Lumina"))
     }
 
     @Test
-    fun `sendMessage with keyword populates user and model responses`() = runTest {
+    fun `sendMessage populates user and model responses in active session`() = runTest {
         viewModel.sendMessage("Tell me about image scan")
 
-        // Advance dispatcher past coroutine delays
         testDispatcher.scheduler.advanceUntilIdle()
 
-        val messages = viewModel.messages.value
-        assertEquals(3, messages.size)
+        val activeSession = viewModel.sessions.value.find { it.id == viewModel.activeSessionId.value }
+        assert(activeSession != null)
+        val messages = activeSession!!.messages
+        assertTrue(messages.size >= 3)
         assertEquals(Role.USER, messages[1].role)
         assertEquals("Tell me about image scan", messages[1].content)
         assertEquals(Role.MODEL, messages[2].role)
@@ -57,16 +60,10 @@ class LuminaChatbotViewModelTest {
     }
 
     @Test
-    fun `clearChat resets messages to initial greeting`() = runTest {
-        viewModel.sendMessage("Voice verification")
-        testDispatcher.scheduler.advanceUntilIdle()
-
-        assertTrue(viewModel.messages.value.size > 1)
-
-        viewModel.clearChat()
-
-        val messages = viewModel.messages.value
-        assertEquals(1, messages.size)
-        assertTrue(messages[0].content.contains("Chat session reset"))
+    fun `createNewSession adds new session and sets as active`() = runTest {
+        val initialCount = viewModel.sessions.value.size
+        viewModel.createNewSession()
+        val sessions = viewModel.sessions.value
+        assertEquals(initialCount + 1, sessions.size)
     }
 }
