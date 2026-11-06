@@ -1,8 +1,5 @@
 package com.cyberverify.ui.screen
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.expandHorizontally
-import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -10,11 +7,11 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -39,10 +36,13 @@ import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.ChatBubbleOutline
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalDrawerSheet
+import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
@@ -50,11 +50,13 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -71,6 +73,7 @@ import com.cyberverify.presentation.viewmodel.Role
 import com.cyberverify.ui.theme.CyberVerifyTheme
 import com.cyberverify.ui.theme.GovernmentBlue
 import com.cyberverify.ui.theme.NavyBlue
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -89,25 +92,37 @@ fun LuminaAssistantScreen(
     var inputText by remember { mutableStateOf("") }
     val listState = rememberLazyListState()
 
+    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+    val scope = rememberCoroutineScope()
+
+    LaunchedEffect(isSidebarOpen) {
+        if (isSidebarOpen) {
+            drawerState.open()
+        } else {
+            drawerState.close()
+        }
+    }
+
+    LaunchedEffect(drawerState.isOpen) {
+        if (!drawerState.isOpen && isSidebarOpen) {
+            viewModel.toggleSidebar()
+        }
+    }
+
     LaunchedEffect(messages.size, isTyping) {
         if (messages.isNotEmpty()) {
             listState.animateScrollToItem(messages.size - 1)
         }
     }
 
-    Row(modifier = modifier.fillMaxSize()) {
-        // Sidebar (Lumina web app style)
-        AnimatedVisibility(
-            visible = isSidebarOpen,
-            enter = expandHorizontally(),
-            exit = shrinkHorizontally()
-        ) {
-            Surface(
-                modifier = Modifier
-                    .width(280.dp)
-                    .fillMaxHeight(),
-                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                tonalElevation = 2.dp
+    ModalNavigationDrawer(
+        modifier = modifier,
+        drawerState = drawerState,
+        drawerContent = {
+            ModalDrawerSheet(
+                drawerState = drawerState,
+                modifier = Modifier.width(280.dp),
+                drawerContainerColor = MaterialTheme.colorScheme.surfaceVariant
             ) {
                 Column(
                     modifier = Modifier
@@ -116,7 +131,10 @@ fun LuminaAssistantScreen(
                 ) {
                     // New Chat Button
                     Surface(
-                        onClick = { viewModel.createNewSession() },
+                        onClick = {
+                            viewModel.createNewSession()
+                            scope.launch { drawerState.close() }
+                        },
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(24.dp),
                         color = Color(0xFFE3F2FD)
@@ -159,7 +177,10 @@ fun LuminaAssistantScreen(
                         items(sessions) { session ->
                             val isSelected = session.id == activeSessionId
                             Surface(
-                                onClick = { viewModel.selectSession(session.id) },
+                                onClick = {
+                                    viewModel.selectSession(session.id)
+                                    scope.launch { drawerState.close() }
+                                },
                                 modifier = Modifier.fillMaxWidth(),
                                 shape = RoundedCornerShape(12.dp),
                                 color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent
@@ -204,17 +225,20 @@ fun LuminaAssistantScreen(
                 }
             }
         }
-
+    ) {
         // Main Chat Area
         Scaffold(
-            modifier = Modifier
-                .weight(1f)
-                .fillMaxHeight(),
+            modifier = Modifier.fillMaxSize(),
             topBar = {
                 TopAppBar(
                     title = {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            IconButton(onClick = { viewModel.toggleSidebar() }) {
+                            IconButton(onClick = {
+                                scope.launch {
+                                    if (drawerState.isOpen) drawerState.close() else drawerState.open()
+                                }
+                                viewModel.toggleSidebar()
+                            }) {
                                 Icon(
                                     imageVector = Icons.Default.Menu,
                                     contentDescription = "Toggle Sidebar",
@@ -289,7 +313,8 @@ fun LuminaAssistantScreen(
                 Surface(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .imePadding(),
+                        .imePadding()
+                        .navigationBarsPadding(),
                     color = MaterialTheme.colorScheme.surface,
                     shadowElevation = 8.dp
                 ) {
@@ -382,64 +407,70 @@ fun LuminaAssistantScreen(
                     .background(MaterialTheme.colorScheme.background)
             ) {
                 if (messages.isEmpty()) {
-                    // Welcome greeting state with suggestion pills
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(24.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center
+                    // Welcome greeting state with suggestion pills inside a LazyColumn for full responsiveness and scrolling
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(24.dp),
+                        verticalArrangement = Arrangement.Center,
+                        horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Text(
-                            text = "Hello, User",
-                            style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Bold),
-                            color = MaterialTheme.colorScheme.onBackground
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = "How can I help you investigate today?",
-                            style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Spacer(modifier = Modifier.height(32.dp))
-
-                        val suggestions = listOf(
-                            "How do image deepfake scans work?",
-                            "Explain the 4 risk levels GREEN, YELLOW, RED, GREY",
-                            "How does the PDF report generator work?",
-                            "Explain quantum computing simply"
-                        )
-
-                        suggestions.chunked(2).forEach { rowSuggestions ->
-                            Row(
+                        item {
+                            Column(
                                 modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                horizontalAlignment = Alignment.CenterHorizontally
                             ) {
-                                rowSuggestions.forEach { suggestion ->
-                                    Card(
-                                        onClick = { viewModel.sendMessage(suggestion) },
-                                        modifier = Modifier
-                                            .weight(1f)
-                                            .height(90.dp),
-                                        shape = RoundedCornerShape(16.dp),
-                                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f))
+                                Text(
+                                    text = "Hello, User",
+                                    style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Bold),
+                                    color = MaterialTheme.colorScheme.onBackground
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    text = "How can I help you investigate today?",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Spacer(modifier = Modifier.height(32.dp))
+
+                                val suggestions = listOf(
+                                    "How do image deepfake scans work?",
+                                    "Explain the 4 risk levels GREEN, YELLOW, RED, GREY",
+                                    "How does the PDF report generator work?",
+                                    "Explain quantum computing simply"
+                                )
+
+                                suggestions.chunked(2).forEach { rowSuggestions ->
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(12.dp)
                                     ) {
-                                        Box(
-                                            modifier = Modifier
-                                                .fillMaxSize()
-                                                .padding(12.dp),
-                                            contentAlignment = Alignment.CenterStart
-                                        ) {
-                                            Text(
-                                                text = suggestion,
-                                                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
-                                                color = MaterialTheme.colorScheme.onSurface
-                                            )
+                                        rowSuggestions.forEach { suggestion ->
+                                            Card(
+                                                onClick = { viewModel.sendMessage(suggestion) },
+                                                modifier = Modifier
+                                                    .weight(1f)
+                                                    .height(90.dp),
+                                                shape = RoundedCornerShape(16.dp),
+                                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f))
+                                            ) {
+                                                Box(
+                                                    modifier = Modifier
+                                                        .fillMaxSize()
+                                                        .padding(12.dp),
+                                                    contentAlignment = Alignment.CenterStart
+                                                ) {
+                                                    Text(
+                                                        text = suggestion,
+                                                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
+                                                        color = MaterialTheme.colorScheme.onSurface
+                                                    )
+                                                }
+                                            }
                                         }
                                     }
+                                    Spacer(modifier = Modifier.height(12.dp))
                                 }
                             }
-                            Spacer(modifier = Modifier.height(12.dp))
                         }
                     }
                 } else {
