@@ -3,6 +3,7 @@ package com.cyberverify.ui.screen
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -25,11 +26,14 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -47,6 +51,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.cyberverify.presentation.viewmodel.AuthViewModel
 import com.cyberverify.ui.theme.CyberVerifyTheme
 import com.cyberverify.ui.theme.NavyBlue
@@ -57,10 +62,25 @@ fun LoginScreen(
     onLoginSuccess: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val userProfile by authViewModel.userProfile.collectAsStateWithLifecycle()
+
     LoginScreenContent(
-        onLogin = { name, email, _ ->
-            authViewModel.login(name, email)
-            onLoginSuccess()
+        isLoading = userProfile.isLoading,
+        errorMessage = userProfile.errorMessage,
+        onClearError = { authViewModel.clearError() },
+        onSignIn = { email, pass ->
+            authViewModel.login(email, pass) { success, _ ->
+                if (success) {
+                    onLoginSuccess()
+                }
+            }
+        },
+        onRegister = { name, email, pass ->
+            authViewModel.register(name, email, pass) { success, _ ->
+                if (success) {
+                    onLoginSuccess()
+                }
+            }
         },
         modifier = modifier
     )
@@ -68,16 +88,20 @@ fun LoginScreen(
 
 @Composable
 fun LoginScreenContent(
-    onLogin: (name: String, email: String, pass: String) -> Unit,
+    isLoading: Boolean = false,
+    errorMessage: String? = null,
+    onClearError: () -> Unit = {},
+    onSignIn: (email: String, pass: String) -> Unit = { _, _ -> },
+    onRegister: (name: String, email: String, pass: String) -> Unit = { _, _, _ -> },
     modifier: Modifier = Modifier
 ) {
     val scrollState = rememberScrollState()
 
+    var selectedTab by remember { mutableStateOf(0) } // 0: Sign In, 1: Register
     var nameInput by remember { mutableStateOf("") }
     var emailInput by remember { mutableStateOf("") }
     var passwordInput by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
-    var errorMessage by remember { mutableStateOf<String?>(null) }
 
     Column(
         modifier = modifier
@@ -145,8 +169,47 @@ fun LoginScreenContent(
         ) {
             Column(modifier = Modifier.padding(24.dp)) {
 
+                // Tabs for Sign In vs Register
+                TabRow(
+                    selectedTabIndex = selectedTab,
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                    indicator = {},
+                    divider = {}
+                ) {
+                    Tab(
+                        selected = selectedTab == 0,
+                        onClick = {
+                            selectedTab = 0
+                            onClearError()
+                        },
+                        modifier = Modifier.clip(RoundedCornerShape(12.dp)),
+                        text = {
+                            Text(
+                                "Sign In",
+                                fontWeight = if (selectedTab == 0) FontWeight.Bold else FontWeight.Normal
+                            )
+                        }
+                    )
+                    Tab(
+                        selected = selectedTab == 1,
+                        onClick = {
+                            selectedTab = 1
+                            onClearError()
+                        },
+                        modifier = Modifier.clip(RoundedCornerShape(12.dp)),
+                        text = {
+                            Text(
+                                "Register",
+                                fontWeight = if (selectedTab == 1) FontWeight.Bold else FontWeight.Normal
+                            )
+                        }
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(20.dp))
+
                 Text(
-                    text = "Welcome Back",
+                    text = if (selectedTab == 0) "Welcome Back" else "Create Account",
                     style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
                     color = NavyBlue
                 )
@@ -154,7 +217,7 @@ fun LoginScreenContent(
                 Spacer(modifier = Modifier.height(4.dp))
 
                 Text(
-                    text = "Sign in to access your secure verification dashboard",
+                    text = if (selectedTab == 0) "Sign in to access your secure verification dashboard" else "Register a new secure verification profile",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -168,7 +231,7 @@ fun LoginScreenContent(
                         color = MaterialTheme.colorScheme.errorContainer
                     ) {
                         Text(
-                            text = errorMessage ?: "",
+                            text = errorMessage,
                             style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
                             color = MaterialTheme.colorScheme.onErrorContainer,
                             modifier = Modifier.padding(12.dp)
@@ -177,18 +240,19 @@ fun LoginScreenContent(
                     Spacer(modifier = Modifier.height(16.dp))
                 }
 
-                // Name Field
-                OutlinedTextField(
-                    value = nameInput,
-                    onValueChange = { nameInput = it },
-                    label = { Text("Full Name") },
-                    leadingIcon = { Icon(Icons.Default.Person, contentDescription = null) },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                    shape = RoundedCornerShape(12.dp)
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
+                // Name Field (only for Register)
+                if (selectedTab == 1) {
+                    OutlinedTextField(
+                        value = nameInput,
+                        onValueChange = { nameInput = it },
+                        label = { Text("Full Name") },
+                        leadingIcon = { Icon(Icons.Default.Person, contentDescription = null) },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        shape = RoundedCornerShape(12.dp)
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
 
                 // Email Field
                 OutlinedTextField(
@@ -227,26 +291,34 @@ fun LoginScreenContent(
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // Single Prominent Continue Button
+                // Submit Button
                 Button(
                     onClick = {
-                        if (nameInput.isBlank() || emailInput.isBlank() || passwordInput.isBlank()) {
-                            errorMessage = "Please enter your Name, Email, and Password to proceed"
+                        if (selectedTab == 0) {
+                            onSignIn(emailInput, passwordInput)
                         } else {
-                            errorMessage = null
-                            onLogin(nameInput, emailInput, passwordInput)
+                            onRegister(nameInput, emailInput, passwordInput)
                         }
                     },
+                    enabled = !isLoading,
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(52.dp),
                     shape = RoundedCornerShape(14.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = NavyBlue)
                 ) {
-                    Text(
-                        text = "Continue",
-                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
-                    )
+                    if (isLoading) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(24.dp),
+                            color = Color.White,
+                            strokeWidth = 2.dp
+                        )
+                    } else {
+                        Text(
+                            text = if (selectedTab == 0) "Sign In" else "Register Account",
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+                        )
+                    }
                 }
             }
         }
@@ -255,7 +327,7 @@ fun LoginScreenContent(
 
         // Security Notice
         Text(
-            text = "CyberVerify ensures privacy with local cryptographic verification and encrypted forensic storage.",
+            text = "CyberVerify ensures privacy with local cryptographic verification and encrypted cloud synchronization.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
@@ -270,8 +342,6 @@ fun LoginScreenContent(
 @Composable
 private fun LoginScreenPreview() {
     CyberVerifyTheme {
-        LoginScreenContent(
-            onLogin = { _, _, _ -> }
-        )
+        LoginScreenContent()
     }
 }

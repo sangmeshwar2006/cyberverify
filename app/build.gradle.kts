@@ -6,6 +6,8 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.google.devtools.ksp)
     alias(libs.plugins.jetbrains.kotlin.plugin.serialization)
+    alias(libs.plugins.google.gms.google.services)
+    alias(libs.plugins.google.firebase.crashlytics)
 }
 
 val localProperties = Properties().apply {
@@ -78,9 +80,14 @@ dependencies {
     implementation(libs.androidx.room.runtime)
     implementation(libs.coil.compose)
     implementation(libs.converter.moshi)
+    implementation(libs.firebase.crashlytics)
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.auth)
+    implementation(libs.firebase.firestore)
     implementation(libs.google.generativeai)
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.kotlinx.coroutines.core)
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.11.0")
     implementation(libs.kotlinx.serialization.core)
     implementation(libs.logging.interceptor)
     implementation(libs.moshi.kotlin)

@@ -10,6 +10,7 @@ import androidx.activity.viewModels
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import com.cyberverify.data.local.AppDatabase
+import com.cyberverify.data.repository.FirestoreRepository
 import com.cyberverify.data.repository.ScanRepository
 import com.cyberverify.presentation.viewmodel.AuthViewModel
 import com.cyberverify.presentation.viewmodel.HistoryViewModel
@@ -57,7 +58,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
 
         database = AppDatabase.getInstance(applicationContext)
-        repository = ScanRepository(database.scanDao())
+        repository = ScanRepository(database.scanDao(), null, FirestoreRepository())
 
         requestPermissions()
 

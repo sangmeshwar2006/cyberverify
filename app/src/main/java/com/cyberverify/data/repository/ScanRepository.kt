@@ -8,13 +8,19 @@ import com.cyberverify.data.remote.AnalysisApiService
 import com.cyberverify.domain.model.MediaType
 import com.cyberverify.domain.model.RiskLevel
 import com.cyberverify.domain.model.ScanReport
+import com.google.firebase.auth.FirebaseAuth
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 
 class ScanRepository(
     private val scanDao: ScanDao,
-    private val apiService: AnalysisApiService? = null
+    private val apiService: AnalysisApiService? = null,
+    private val firestoreRepository: FirestoreRepository? = null
 ) {
+    private val scope = CoroutineScope(Dispatchers.IO)
 
     fun getScanHistory(): Flow<List<ScanReport>> {
         return scanDao.getAllScans().map { list ->
@@ -45,9 +51,7 @@ class ScanRepository(
                     mediaUri = fileUri
                 )
             } else {
-                // If live API available, attempt network request; fallback to demo on failure
                 runCatching {
-                    // Place logic here when endpoint configured
                     DemoAnalysisProvider.generateAnalysis(fileName, MediaType.IMAGE, fileUri)
                 }.getOrElse {
                     DemoAnalysisProvider.generateAnalysis(fileName, MediaType.IMAGE, fileUri)
@@ -55,6 +59,7 @@ class ScanRepository(
             }
 
             scanDao.insertScan(report.toEntity())
+            syncToFirestore(report)
             report
         }
     }
@@ -80,19 +85,48 @@ class ScanRepository(
             }
 
             scanDao.insertScan(report.toEntity())
+            syncToFirestore(report)
             report
         }
     }
 
     suspend fun saveScanReport(report: ScanReport) {
         scanDao.insertScan(report.toEntity())
+        syncToFirestore(report)
     }
 
     suspend fun deleteScan(id: String) {
         scanDao.deleteScanById(id)
+        runCatching {
+            val currentUser = FirebaseAuth.getInstance().currentUser
+            if (currentUser != null && firestoreRepository != null) {
+                scope.launch {
+                    firestoreRepository.deleteScanReport(currentUser.uid, id)
+                }
+            }
+        }
     }
 
     suspend fun clearHistory() {
         scanDao.clearAllScans()
+        runCatching {
+            val currentUser = FirebaseAuth.getInstance().currentUser
+            if (currentUser != null && firestoreRepository != null) {
+                scope.launch {
+                    firestoreRepository.clearHistory(currentUser.uid)
+                }
+            }
+        }
+    }
+
+    private fun syncToFirestore(report: ScanReport) {
+        runCatching {
+            val currentUser = FirebaseAuth.getInstance().currentUser
+            if (currentUser != null && firestoreRepository != null) {
+                scope.launch {
+                    firestoreRepository.saveScanReport(currentUser.uid, report)
+                }
+            }
+        }
     }
 }

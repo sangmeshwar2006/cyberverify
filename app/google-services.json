@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "179078828365",
+    "project_id": "fake-image-detector-358ff",
+    "storage_bucket": "fake-image-detector-358ff.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:179078828365:android:9dec04e5608871d8346704",
+        "android_client_info": {
+          "package_name": "com.cyberverify"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAeD6vsoZ8v5kGeh8p5twDBOMysmX8WDmY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
